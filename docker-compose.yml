@@ -1,0 +1,8 @@
+services:
+  wz-drop-randomizer:
+    build: .
+    image: wz-drop-randomizer:latest
+    container_name: wz-drop-randomizer
+    restart: unless-stopped
+    ports: # host:container
+      - 3001:3000
