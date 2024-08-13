@@ -4,7 +4,6 @@ export function MapData() {
         name: "Rebirth Island",
         locations: [
           "Boat",
-          "Boat",
           "Control Center",
           "Living Quarters",
           "Tents",
@@ -40,7 +39,7 @@ export function MapData() {
           "Floating District",
           "Zoo",
           "Cruise Terminal",
-          "Houses: North of Fire Department",
+          "Houses: North of Fire Dept.",
           "Houses: North of Zoo",
           "Houses: North of Market",
           "Houses: South of Market",
@@ -68,12 +67,19 @@ export function MapData() {
 
       {
         name: "Urzikstan",
-        locations: []
-      },
-
-      {
-        name: "Superstore",
-        locations: []
+        locations: [
+          "Levin Resort",
+          "Popov Power",
+          "Orlov Military Base",
+          "Seaport District",
+          "Urzikstan Cargo",
+          "Old Town",
+          "Low Town",
+          "Hadiqa Farms",
+          "Zaravan City",
+          "Zaravan Suburbs",
+          "Shahin Manor",
+        ]
       },
     ]
 }
