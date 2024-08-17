@@ -10,16 +10,49 @@ import { Card, CardContent } from "@/components/ui/card"
 // other components
 import { ModeToggle } from "@/components/mode-toggle"
 import { MapData } from "@/components/map-data"
-import { IosPickerItem } from '@/components/ui/ios-picker/ios-picker-item'
+import { IosPickerItem } from '@/components/ios-picker/ios-picker-item'
+import { SettingsDialog } from '@/components/settings-dialog'
+import { useLocalStorage } from '@/hooks/use-local-storage'
+import { DefaultSettings } from '@/components/settings'
 
 export default function App() {
-  let mapData = MapData()
-  const [mapResult, setMapResult] = useState(Array(mapData.length))
+
+  // const [mapDataVersion, setMapDataVersion] = useLocalStorage("mapDataVersion", -1);
+  const [mapData, setMapData] = useLocalStorage("mapData", MapData);
+  const [options, setOptions] = useLocalStorage("options", DefaultSettings)
+
+  const [activeIndices, setActiveIndices] = useState(Array(mapData.length))
+
+  const setActiveIndex = (index) => {
+    return (value) => {
+      let copy = [...activeIndices]
+      copy[index] = value
+      setActiveIndices(copy)
+    }
+  };
 
   const [tab, setTab] = useState(mapData[0].name)
+
   const onTabChange = (value) => {
     setTab(value);
   }
+
+  async function onSubmitOptions(formData) {
+    let copy = {...options}
+    copy.johnMode = formData.johnMode
+    copy.showAnimation = formData.showAnimation
+    setOptions(copy)
+  }
+
+  const handleJohnMode = () => {
+    const currentLocations = mapData.filter((items) => (items.name == tab))[0].locations
+
+    return !options.johnMode ? currentLocations :
+           tab == "Vondel"   ? ["Mall"] :
+                               ["Boat"];
+  };
+
+  const itemsModified = handleJohnMode();
 
   return (
     <main className="flex flex-col items-center p-12 font-warzone">
@@ -30,6 +63,7 @@ export default function App() {
 
         {/* Top bar */}
         <div className="flex gap-x-2">
+          <SettingsDialog onSubmit={onSubmitOptions} options={options} />
 
           {/* Selecter (mobile) */}
           <div className="block md:hidden grow">
@@ -65,8 +99,14 @@ export default function App() {
               <CardContent>
                 <div className="flex flex-col items-center">
                   <div className="flex flex-col items-center w-full md:max-w-lg">
-                    {mapData[index].locations.length > 0  && <IosPickerItem items={mapData[index].locations} duration={40} delay={10}  />}
-                    {mapData[index].locations.length == 0 && "Coming soon..."}
+                    <IosPickerItem
+                      items_i={itemsModified}
+                      activeIndex={activeIndices[index]}
+                      setActiveIndex={setActiveIndex(index)}
+                      duration={40}
+                      delay={10}
+                      options={options}
+                    />
                   </div>
                 </div>
               </CardContent>

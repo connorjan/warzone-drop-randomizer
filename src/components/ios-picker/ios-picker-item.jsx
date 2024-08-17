@@ -5,7 +5,7 @@ import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { getRandomInt } from "@/lib/common";
 
-export const IosPickerItem = ({items, duration=50, delay=20}) => {
+export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50, delay=20, options}) => {
 
   const loop = true;
 
@@ -15,9 +15,9 @@ export const IosPickerItem = ({items, duration=50, delay=20}) => {
       axis: 'y',
       dragFree: true,
       containScroll: true,
-      watchSlides: false,
       duration: duration,
-      watchDrag: true
+      watchDrag: false,
+      startIndex: activeIndex || 0
    },
    [
     Autoplay({
@@ -27,19 +27,29 @@ export const IosPickerItem = ({items, duration=50, delay=20}) => {
    ]
   )
 
+  const [items, setItems] = React.useState(items_i)
+
   const CIRCLE_DEGREES = 360
+  const WHEEL_ITEMS_IN_VIEW = 5
   const WHEEL_ITEM_SIZE = 35
-  const WHEEL_ITEM_COUNT = items.length
-  const WHEEL_ITEMS_IN_VIEW = 4
-
-  const WHEEL_ITEM_RADIUS = CIRCLE_DEGREES / WHEEL_ITEM_COUNT
+  const WHEEL_ITEM_RADIUS = 20
   const IN_VIEW_DEGREES = WHEEL_ITEM_RADIUS * WHEEL_ITEMS_IN_VIEW
-  const WHEEL_RADIUS = Math.round(
-    WHEEL_ITEM_SIZE / 2 / Math.tan(Math.PI / WHEEL_ITEM_COUNT)
-  )
+  const WHEEL_RADIUS = Math.round(WHEEL_ITEM_SIZE / 2 / Math.tan(Math.PI / 16))
 
-  const isInView = (wheelLocation, slidePosition) =>
-    Math.abs(wheelLocation - slidePosition) < IN_VIEW_DEGREES
+  useEffect(() => {
+    let copy = [...items_i]
+    if (copy.length == 0) {
+      copy = [":)"]
+    }
+    while (copy.length < 10) {
+      copy = [...copy, ...items_i]
+    }
+    setItems(copy)
+  }, [items_i, emblaApi])
+
+  const isInView = (wheelLocation, slidePosition) => {
+    return Math.abs(wheelLocation - slidePosition) < IN_VIEW_DEGREES
+  }
 
   const setSlideStyles = (emblaApi, index, loop, slideCount, totalRadius) => {
     const slideNode = emblaApi.slideNodes()[index]
@@ -85,8 +95,7 @@ export const IosPickerItem = ({items, duration=50, delay=20}) => {
   const totalRadius = slideCount * WHEEL_ITEM_RADIUS
   const rotationOffset = loop ? 0 : WHEEL_ITEM_RADIUS
 
-  const [isPlaying, setIsPlaying]   = useState(false)
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   const inactivateEmblaTransform = useCallback((emblaApi) => {
     if (!emblaApi) return
@@ -130,7 +139,7 @@ export const IosPickerItem = ({items, duration=50, delay=20}) => {
     })
 
     emblaApi.on('settle', (emblaApi) => {
-      setCurrentIndex(emblaApi.selectedScrollSnap())
+      setActiveIndex(emblaApi.selectedScrollSnap())
     })
 
     inactivateEmblaTransform(emblaApi)
@@ -156,10 +165,8 @@ export const IosPickerItem = ({items, duration=50, delay=20}) => {
     if (!autoplay) return
 
     if (autoplay.isPlaying()) {
-      console.log("Stopping autoplay")
       autoplay.stop()
     } else {
-      console.log("Starting autoplay")
       autoplay.play()
     }
   }, [emblaApi])
@@ -193,23 +200,25 @@ export const IosPickerItem = ({items, duration=50, delay=20}) => {
 
   const spinUp = () => {
     if (!emblaApi) return
-    const autoplay = emblaApi?.plugins()?.autoplay
-    if (!autoplay) return
 
-    if (isPlaying) {
-      // toggleAutoplay()
-      autoplay.stop();
+    if (options.showAnimation) {
+      const autoplay = emblaApi?.plugins()?.autoplay
+      if (!autoplay) return
+
+      if (isPlaying) {
+        autoplay.stop();
+      }
+      toggleAutoplay()
+
+      // Generate a random number of ms between 1000 and 3000
+      const spinMod = 100 * getRandomInt(10, 30);
+
+      setTimeout(toggleAutoplay, spinMod)
+      // setTimeout(spinDown,       spinMod+400)
+    } else {
+      emblaApi.scrollTo(getRandomInt(items.length), true)
     }
-    toggleAutoplay()
-
-    // Generate a random number of ms between 1000 and 3000
-    const spinMod = 100 * getRandomInt(10, 30);
-
-    setTimeout(toggleAutoplay, spinMod)
-    // setTimeout(spinDown,       spinMod+400)
   };
-
-
 
   return (
     <>
@@ -229,7 +238,6 @@ export const IosPickerItem = ({items, duration=50, delay=20}) => {
         </div>
       </div>
       <Button onClick={spinUp} disabled={isPlaying} className="w-full" >Spin</Button>
-      {/* <p>{items[currentIndex]}</p> */}
     </>
   )
 }

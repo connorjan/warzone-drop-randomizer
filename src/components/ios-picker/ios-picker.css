@@ -60,8 +60,6 @@
   transform-style: preserve-3d;
   will-change: transform;
   transition: height 0.2s;
-  /* display: flex; */
-  /* align-items: flex-start; */
 }
 .embla__ios-picker__slide {
   width: 100%;
@@ -73,5 +71,4 @@
   backface-visibility: hidden;
   opacity: 0;
   transition: height 0.2s;
-
 }

@@ -23,7 +23,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable, fontWarzone.variable)}>
+      <body className={cn("bg-background font-sans antialiased", fontSans.variable, fontWarzone.variable)}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
