@@ -1,30 +1,24 @@
-import * as React from "react"
-
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useState, Fragment } from 'react'
 
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Label } from '@/components/ui/label'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Settings } from "lucide-react"
-import { SettingsSchema } from "@/components/settings"
-import { DefaultSettings } from "@/components/settings"
-
-// import { ServerFormHandler } from "./server-form-handler"
+import { Settings as SettingsIcon } from "lucide-react"
+import { Settings, SettingsLabels } from "@/components/settings"
 
 export function SettingsDialog({onSubmit, options}) {
-  const [settingsOpen, setSettingsOpen] = React.useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // Need to maintain the resetDialog state here so it doesn't get removed on re-render when the breakpoint changes
-  const [resetOpen, setResetOpen] = React.useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
 
   // Equal to Tailwind's "md" breakpoint
   const isDesktop = useMediaQuery("(min-width: 768px)")
@@ -32,7 +26,7 @@ export function SettingsDialog({onSubmit, options}) {
   const title = "Settings"
   const desc  = `Make changes to the settings here. ${isDesktop ? "Click" : "Tap"} save when you're done.`
 
-  const settingsFormProps = {
+  const settingsProps = {
     onSubmit: onSubmit,
     setSettingsOpen: setSettingsOpen,
     isDesktop: isDesktop,
@@ -46,7 +40,7 @@ export function SettingsDialog({onSubmit, options}) {
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogTrigger asChild>
           <Button variant="outline" size="icon">
-            <Settings className="w-3/5 h-3/5"/>
+            <SettingsIcon className="w-3/5 h-3/5"/>
           </Button>
         </DialogTrigger>
         <DialogContent className="max-h-[70dvh] overflow-hidden flex flex-col">
@@ -55,7 +49,7 @@ export function SettingsDialog({onSubmit, options}) {
             <DialogDescription>{desc}</DialogDescription>
           </DialogHeader>
           <ScrollArea className="overflow-y-auto" scrollHideDelay="0">
-            <SettingsForm {...settingsFormProps} />
+            <SettingsForm {...settingsProps} />
           </ScrollArea>
         </DialogContent>
       </Dialog>
@@ -66,7 +60,7 @@ export function SettingsDialog({onSubmit, options}) {
     <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
       <DrawerTrigger asChild>
         <Button variant="outline" size="icon">
-          <Settings className="w-3/5 h-3/5" />
+          <SettingsIcon className="w-3/5 h-3/5" />
         </Button>
       </DrawerTrigger>
       <DrawerContent>
@@ -75,7 +69,7 @@ export function SettingsDialog({onSubmit, options}) {
           <DrawerDescription>{desc}</DrawerDescription>
         </DrawerHeader>
         <ScrollArea className="overflow-y-auto">
-          <SettingsForm {...settingsFormProps} className="px-4" />
+          <SettingsForm {...settingsProps} className="px-4" />
           <DrawerFooter className="pt-2">
             {/* <DrawerClose asChild>
               <Button variant="outline">Cancel</Button>
@@ -87,23 +81,14 @@ export function SettingsDialog({onSubmit, options}) {
   )
 }
 
-function FormSwitch({form, name, label}) {
-  return <FormField
-    control={form.control}
-    name={name}
-    render={({ field }) => (
-      <FormItem>
-        <div className="flex items-center gap-4">
-          <FormLabel className="min-w-40">{label}</FormLabel>
-          <div className="grow"/>
-          <FormControl>
-            <Switch checked={field.value} onCheckedChange={field.onChange} />
-          </FormControl>
-        </div>
-        <FormMessage />
-      </FormItem>
-    )}
-  />
+function FormSwitch({label, value, onChange}) {
+  return (
+    <div className="flex items-center gap-4">
+      <Label className="min-w-40">{label}</Label>
+      <div className="grow"/>
+      <Switch checked={value} onCheckedChange={onChange} />
+    </div>
+  )
 }
 
 function ResetButton(props) {
@@ -133,58 +118,86 @@ function ResetButton(props) {
 
 function SettingsForm({ className, ...props }) {
 
-  const [pending, setPending] = React.useState(false)
+  const [pending, setPending] = useState(false)
 
-  async function onSubmitWrapper(formData) {
+  const switchStates = (() => {
+    let ret = {}
+    Object.entries(Settings.switches).forEach(([key, defaultValue]) => {
+      let switchDefault = defaultValue
+      if (key in props.options.switches) {
+        // If the key already exists in the localStorage use that value as the default instead
+        switchDefault = props.options.switches[key]
+      }
+      const [value, setValue] = useState(switchDefault)
+
+      // By default just save off the value and setValue handle
+      ret[key] = {
+        value: value,
+        setValue: setValue,
+        onSwitch: setValue
+      }
+    })
+
+    // Special case overrides
+    ret["johnMode"].onSwitch = (value) => {
+      if (value) {
+        ret["ianMode"].setValue(false)
+      }
+      ret["johnMode"].setValue(value)
+    }
+
+    ret["ianMode"].onSwitch = (value) => {
+      if (value) {
+        ret["johnMode"].setValue(false)
+      }
+      ret["ianMode"].setValue(value)
+    }
+
+    return ret
+  })()
+
+  async function onSubmitWrapper(reset=false) {
     // setPending(true)
     // const result = await ServerFormHandler(formData)
     // setPending(false)
-    // console.log(result)
-    props.onSubmit(formData)
+
+    let newOptions
+    if (reset) {
+      newOptions = structuredClone(Settings)
+    } else {
+      // Extract switches
+      newOptions = structuredClone(props.options)
+      Object.entries(switchStates).forEach(([key, switchState]) => {
+        newOptions.switches[key] = switchState.value
+      })
+    }
+
+    props.onSubmit(newOptions)
     props.setSettingsOpen(false)
   }
 
-  const form = useForm({
-    resolver: zodResolver(SettingsSchema),
-    defaultValues: props.options
-  })
-
-  const switches = [
-    {
-      name: "johnMode",
-      label: "John Mode"
-    },
-    {
-      name: "showAnimation",
-      label: "Show Animation"
-    }
-  ]
-
   return (
-    <Form {...form}>
-      <form action={form.handleSubmit(onSubmitWrapper)} className={cn("space-y-4 py-1", className)}>
-        <FormLabel className="text-lg">Switches</FormLabel>
-        <Card>
-          <CardContent className="p-2">
-            <div className="space-y-2">
-              {switches.map((item, index) => (
-                <>
-                  <FormSwitch form={form} name={item.name} label={item.label}/>
-                  {index < switches.length-1 && <Separator/>}
-                </>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+    <div className={cn("space-y-4 py-1", className)}>
+      <Card>
+        <CardContent className="p-2">
+          <div className="space-y-2">
+            {Object.entries(switchStates).map(([key, value], index) => (
+              <Fragment key={key}>
+                <FormSwitch key={key} label={SettingsLabels[key]} value={value.value} onChange={value.onSwitch} />
+                {index < Object.keys(switchStates).length-1 && <Separator key={`${key}-sep`}/>}
+              </Fragment>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-        <div className="flex flex-col gap-y-2 md:flex-row">
-          <Button type="submit" disabled={pending} className="w-full md:w-auto md:min-w-[8em]">
-            {pending ? "Saving" : "Save"}
-          </Button>
-          {props.isDesktop && <div className="grow"/>}
-          <ResetButton onReset={() => onSubmitWrapper(DefaultSettings)} open={props.resetOpen} onOpenChange={props.setResetOpen} />
-        </div>
-      </form>
-    </Form>
+      <div className="flex flex-col gap-y-2 md:flex-row">
+        <Button onClick={() => onSubmitWrapper(false)} disabled={pending} className="w-full md:w-auto md:min-w-[8em]">
+          {pending ? "Saving" : "Save"}
+        </Button>
+        {props.isDesktop && <div className="grow"/>}
+        <ResetButton onReset={() => onSubmitWrapper(true)} open={props.resetOpen} onOpenChange={props.setResetOpen} />
+      </div>
+    </div>
   )
 }

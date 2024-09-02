@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 const isServer = typeof window === 'undefined';
 
-export function useLocalStorage(key, initialValue) {
+export function useLocalStorage(key, initialValue, sanitizeValue=null) {
   // State to store our value
   // Pass initial state function to useState so logic is only executed once
   const [storedValue, setStoredValue] = useState(() => initialValue);
@@ -10,9 +10,16 @@ export function useLocalStorage(key, initialValue) {
   const initialize = () => {
     try {
       // Get from local storage by key
-      const item = window.localStorage.getItem(key);
+      let item = window.localStorage.getItem(key);
       // Parse stored json or if none return initialValue
-      return item ? JSON.parse(item) : initialValue;
+      if (item) {
+        item = JSON.parse(item)
+        if (sanitizeValue) {
+          item = sanitizeValue(item)
+        }
+        return item
+      }
+      return initialValue;
     } catch (error) {
       // If error also return initialValue
       console.log(error);
@@ -40,7 +47,7 @@ export function useLocalStorage(key, initialValue) {
         if (valueToStore === undefined || valueToStore === null) {
           window.localStorage.removeItem(key);
         } else {
-          console.log(`Setting localstorage for ${key}`)
+          // console.log(`Setting localstorage for ${key}`)
           window.localStorage.setItem(key, JSON.stringify(valueToStore));
         }
       }

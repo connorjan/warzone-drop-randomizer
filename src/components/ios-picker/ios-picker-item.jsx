@@ -155,7 +155,7 @@ export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50
     emblaApi
       .on('autoplay:play', () => setIsPlaying(true))
       .on('autoplay:stop', () => setIsPlaying(false))
-      .on('reInit', () => setIsPlaying(autoplay.isPlaying()))
+      .on('reInit', () => setIsPlaying(false /*autoplay.isPlaying()*/))
   }, [emblaApi])
 
   // toggles the state of the autoplay
@@ -201,7 +201,7 @@ export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50
   const spinUp = () => {
     if (!emblaApi) return
 
-    if (options.showAnimation) {
+    if (options.switches.showAnimation) {
       const autoplay = emblaApi?.plugins()?.autoplay
       if (!autoplay) return
 

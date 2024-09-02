@@ -13,15 +13,22 @@ import { MapData } from "@/components/map-data"
 import { IosPickerItem } from '@/components/ios-picker/ios-picker-item'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { useLocalStorage } from '@/hooks/use-local-storage'
-import { DefaultSettings } from '@/components/settings'
+import { Settings } from '@/components/settings'
+import { getRandomInt, shuffle } from '@/lib/common'
 
 export default function App() {
 
-  // const [mapDataVersion, setMapDataVersion] = useLocalStorage("mapDataVersion", -1);
-  const [mapData, setMapData] = useLocalStorage("mapData", MapData);
-  const [options, setOptions] = useLocalStorage("options", DefaultSettings)
+  const sanitizeSettings = (settings) => {
+    if (!settings.hasOwnProperty('switches')) {
+      return Settings
+    }
+    return settings
+  }
 
-  const [activeIndices, setActiveIndices] = useState(Array(mapData.length))
+  const [mapData, setMapData] = useState(MapData);
+  const [options, setOptions] = useLocalStorage("options", structuredClone(Settings), sanitizeSettings)
+
+  const [activeIndices, setActiveIndices] = useState(mapData.map((map) => (getRandomInt(map.locations.length))))
 
   const setActiveIndex = (index) => {
     return (value) => {
@@ -37,22 +44,34 @@ export default function App() {
     setTab(value);
   }
 
-  async function onSubmitOptions(formData) {
-    let copy = {...options}
-    copy.johnMode = formData.johnMode
-    copy.showAnimation = formData.showAnimation
-    setOptions(copy)
+  async function onSubmitOptions(newOptions) {
+    setOptions(newOptions)
   }
 
-  const handleJohnMode = () => {
-    const currentLocations = mapData.filter((items) => (items.name == tab))[0].locations
+  const handleSpecialMode = () => {
+    let locations = mapData.filter((items) => (items.name == tab))[0].locations
 
-    return !options.johnMode ? currentLocations :
-           tab == "Vondel"   ? ["Mall"] :
-                               ["Boat"];
+    try {
+      if (options.switches.hasOwnProperty('johnMode') && options.switches.johnMode) {
+        switch (tab) {
+          case "Vondel": return ["Mall"]
+          case "Rebirth Island": return ["Boat"]
+          case "Fortune's Keep": return ["Boat"]
+        }
+      } else if (options.switches.hasOwnProperty('ianMode') && options.switches.ianMode) {
+        switch (tab) {
+          case "Rebirth Island": return ["Living Quarters"]
+        }
+      }
+    } catch (error) {
+      console.log("Error:")
+      console.log(error)
+    }
+
+    return shuffle(locations)
   };
 
-  const itemsModified = handleJohnMode();
+  const itemsModified = handleSpecialMode();
 
   return (
     <main className="flex flex-col items-center p-12 font-warzone">
