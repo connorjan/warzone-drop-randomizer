@@ -120,41 +120,35 @@ function SettingsForm({ className, ...props }) {
 
   const [pending, setPending] = useState(false)
 
-  const switchStates = (() => {
-    let ret = {}
-    Object.entries(Settings.switches).forEach(([key, defaultValue]) => {
-      let switchDefault = defaultValue
+  const [switchStates, setSwitchStates] = useState((() => {
+    // Build default switch values using the keys based off of the default settings, but override values based on local storage
+    let defaults = {}
+    Object.entries(Settings.switches).forEach(([key, settingsDefault]) => {
+      let defaultValue = settingsDefault
       if (key in props.options.switches) {
         // If the key already exists in the localStorage use that value as the default instead
-        switchDefault = props.options.switches[key]
+        defaultValue = props.options.switches[key]
       }
-      const [value, setValue] = useState(switchDefault)
-
-      // By default just save off the value and setValue handle
-      ret[key] = {
-        value: value,
-        setValue: setValue,
-        onSwitch: setValue
-      }
+      defaults[key] = defaultValue
     })
+    return defaults
+  })())
+
+  const onSwitch = (key, newValue) => {
+    let newSwitchStates = structuredClone(switchStates)
+    newSwitchStates[key] = newValue
 
     // Special case overrides
-    ret["johnMode"].onSwitch = (value) => {
-      if (value) {
-        ret["ianMode"].setValue(false)
-      }
-      ret["johnMode"].setValue(value)
+    if (key == "johnMode" && newValue) {
+      newSwitchStates["ianMode"] = false
     }
 
-    ret["ianMode"].onSwitch = (value) => {
-      if (value) {
-        ret["johnMode"].setValue(false)
-      }
-      ret["ianMode"].setValue(value)
+    if (key == "ianMode" && newValue) {
+      newSwitchStates["johnMode"] = false
     }
 
-    return ret
-  })()
+    setSwitchStates(newSwitchStates)
+  }
 
   async function onSubmitWrapper(reset=false) {
     // setPending(true)
@@ -167,8 +161,8 @@ function SettingsForm({ className, ...props }) {
     } else {
       // Extract switches
       newOptions = structuredClone(props.options)
-      Object.entries(switchStates).forEach(([key, switchState]) => {
-        newOptions.switches[key] = switchState.value
+      Object.entries(switchStates).forEach(([key, value]) => {
+        newOptions.switches[key] = value
       })
     }
 
@@ -183,7 +177,7 @@ function SettingsForm({ className, ...props }) {
           <div className="space-y-2">
             {Object.entries(switchStates).map(([key, value], index) => (
               <Fragment key={key}>
-                <FormSwitch key={key} label={SettingsLabels[key]} value={value.value} onChange={value.onSwitch} />
+                <FormSwitch key={key} label={SettingsLabels[key]} value={value} onChange={(value) => onSwitch(key, value)} />
                 {index < Object.keys(switchStates).length-1 && <Separator key={`${key}-sep`}/>}
               </Fragment>
             ))}

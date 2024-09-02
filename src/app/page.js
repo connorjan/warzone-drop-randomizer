@@ -68,7 +68,7 @@ export default function App() {
       console.log(error)
     }
 
-    return shuffle(locations)
+    return locations
   };
 
   const itemsModified = handleSpecialMode();
