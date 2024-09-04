@@ -12,7 +12,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Settings as SettingsIcon } from "lucide-react"
-import { Settings, SettingsLabels } from "@/components/settings"
+import { Settings, SwitchLabels } from "@/components/settings"
+import { MapData } from './map-data'
 
 export function SettingsDialog({onSubmit, options}) {
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -71,9 +72,6 @@ export function SettingsDialog({onSubmit, options}) {
         <ScrollArea className="overflow-y-auto">
           <SettingsForm {...settingsProps} className="px-4" />
           <DrawerFooter className="pt-2">
-            {/* <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose> */}
           </DrawerFooter>
         </ScrollArea>
       </DrawerContent>
@@ -134,6 +132,22 @@ function SettingsForm({ className, ...props }) {
     return defaults
   })())
 
+  const [enabledLocations, setEnabledLocations] = useState((() => {
+    // Build default switch values using the keys based off of the default settings, but override values based on local storage
+    let defaults = {}
+    MapData.forEach((map) => {
+      defaults[map.name] = {}
+      map.locations.forEach((location) => {
+        defaults[map.name][location] = true
+        if (props.options.disabledLocations.hasOwnProperty(map.name) && props.options.disabledLocations[map.name].includes(location)) {
+          defaults[map.name][location] = false
+        }
+      })
+    })
+
+    return defaults
+  })())
+
   const onSwitch = (key, newValue) => {
     let newSwitchStates = structuredClone(switchStates)
     newSwitchStates[key] = newValue
@@ -164,6 +178,19 @@ function SettingsForm({ className, ...props }) {
       Object.entries(switchStates).forEach(([key, value]) => {
         newOptions.switches[key] = value
       })
+
+      // Extract disabledLocations
+      Object.entries(enabledLocations).forEach(([map, locations]) => {
+        newOptions.disabledLocations[map] = []
+        Object.entries(locations).forEach(([location, enabled]) => {
+          if (!enabled) {
+            newOptions.disabledLocations[map].push(location)
+          }
+        })
+        if (newOptions.disabledLocations[map].length == 0) {
+          delete newOptions.disabledLocations[map]
+        }
+      })
     }
 
     props.onSubmit(newOptions)
@@ -171,21 +198,58 @@ function SettingsForm({ className, ...props }) {
   }
 
   return (
-    <div className={cn("space-y-4 py-1", className)}>
-      <Card>
-        <CardContent className="p-2">
-          <div className="space-y-2">
-            {Object.entries(switchStates).map(([key, value], index) => (
-              <Fragment key={key}>
-                <FormSwitch key={key} label={SettingsLabels[key]} value={value} onChange={(value) => onSwitch(key, value)} />
-                {index < Object.keys(switchStates).length-1 && <Separator key={`${key}-sep`}/>}
-              </Fragment>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+    <div className={cn("space-y-4", className)}>
 
-      <div className="flex flex-col gap-y-2 md:flex-row">
+    {/* Switches */}
+    <Card>
+      <CardContent className="p-2">
+        <div className="space-y-2">
+          {Object.entries(switchStates).map(([key, value], index) => (
+            <Fragment key={key}>
+              <FormSwitch label={SwitchLabels[key]} value={value} onChange={(value) => onSwitch(key, value)} />
+              {index < Object.keys(switchStates).length-1 && <Separator/>}
+            </Fragment>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+
+      {/* Custom location settings */}
+      <div className="text-lg font-semibold">Customize Locations</div>
+
+      <Accordion type="single" collapsible className="w-full pt-0 mt-0">
+        {MapData.map((map, mapIndex) => (
+          <Fragment key={`accordian-item-${mapIndex}`}>
+            <AccordionItem value={mapIndex+1}>
+              <AccordionTrigger>{map.name}</AccordionTrigger>
+              <AccordionContent>
+                <Card>
+                  <ScrollArea className="max-h-40 overflow-y-auto" scrollHideDelay="0">
+                    <CardContent className="p-2">
+                      <div className="space-y-2">
+                        {Object.entries(enabledLocations[map.name]).map(([location, disabled], locationIndex) => (
+                          <Fragment key={`dis-switch-${mapIndex}-${locationIndex}`}>
+                            <FormSwitch label={location} value={disabled} onChange={(value) => {
+                                let newVal = structuredClone(enabledLocations)
+                                newVal[map.name][location] = value
+                                setEnabledLocations(newVal)
+                              }}
+                            />
+                            {/* {locationIndex < Object.keys(enabledLocations[map.name]).length-1 && <Separator/>} */}
+                          </Fragment>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </ScrollArea>
+                </Card>
+              </AccordionContent>
+            </AccordionItem>
+          </Fragment>
+        ))}
+      </Accordion>
+
+      {/* Save and Reset buttons */}
+      <div className="flex flex-col gap-y-2 md:flex-row p-1">
         <Button onClick={() => onSubmitWrapper(false)} disabled={pending} className="w-full md:w-auto md:min-w-[8em]">
           {pending ? "Saving" : "Save"}
         </Button>

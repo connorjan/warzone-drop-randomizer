@@ -20,7 +20,10 @@ export default function App() {
 
   const sanitizeSettings = (settings) => {
     if (!settings.hasOwnProperty('switches')) {
-      return Settings
+      settings.switches = structuredClone(Settings.switches)
+    }
+    if (!settings.hasOwnProperty('disabledLocations')) {
+      settings.disabledLocations = {}
     }
     return settings
   }
@@ -62,6 +65,11 @@ export default function App() {
         switch (tab) {
           case "Rebirth Island": return ["Living Quarters"]
         }
+      }
+
+      // If not doing a special mode, filter maps based on disabledLocations
+      if (options.disabledLocations.hasOwnProperty(tab)) {
+        locations = locations.filter((location) => (!options.disabledLocations[tab].includes(location)))
       }
     } catch (error) {
       console.log("Error:")

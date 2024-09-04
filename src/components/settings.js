@@ -3,10 +3,12 @@ export const Settings = {
     johnMode: false,
     ianMode: false,
     showAnimation: true,
-  }
+  },
+
+  disabledLocations: {}
 }
 
-export const SettingsLabels = {
+export const SwitchLabels = {
   johnMode: "John Mode",
   ianMode: "Ian Mode",
   showAnimation: "Show Animations"
