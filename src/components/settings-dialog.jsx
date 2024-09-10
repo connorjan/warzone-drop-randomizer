@@ -1,6 +1,4 @@
-import { useState, Fragment } from 'react'
-
-import React from 'react'
+import { useState, Fragment, useRef, createRef, useEffect } from 'react'
 import { cn } from "@/lib/utils"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -135,8 +133,9 @@ function SettingsForm({ className, ...props }) {
   const [pending, setPending] = useState(false)
 
   // Create a ref for each map
-  const scrollableEndRefs = MapData.map(() => React.createRef())
-  const [scrollTrackerIndex, setScrollTrackerIndex] = useState(0)
+  const scrollableEndRefs = MapData.map(() => createRef())
+  const scrollTrackerIndex = useRef(0)
+  const [triggerScroll, setTriggerScroll] = useState(false)
 
   const [switchStates, setSwitchStates] = useState((() => {
     // Build default switch values using the keys based off of the default settings, but override values based on local storage
@@ -248,16 +247,15 @@ function SettingsForm({ className, ...props }) {
       newCustomLocations[mapName].push(location)
     }
     setCustomLocations(newCustomLocations)
+    setTriggerScroll(true)
   }
 
-  React.useEffect(() => {
-    scrollableEndRefs[scrollTrackerIndex].current?.scrollIntoView({ behavior: 'smooth' })
-    // const div = scrollableEndRefs[scrollTrackerIndex].current
-    // if (!div) {
-    //   return
-    // }
-    // div.scrollTop = div.scrollHeight
-  }, [customLocations])
+  useEffect(() => {
+    if (triggerScroll) {
+      setTriggerScroll(false)
+      scrollableEndRefs[scrollTrackerIndex.current].current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [triggerScroll, scrollableEndRefs])
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -321,7 +319,7 @@ function SettingsForm({ className, ...props }) {
 
                 <CustomLocationForm onSubmit={(formData) => {
                   customLocationSubmit(map.name, formData)
-                  setScrollTrackerIndex(mapIndex)
+                  scrollTrackerIndex.current = mapIndex
                 }}/>
 
               </AccordionContent>
@@ -341,7 +339,6 @@ function SettingsForm({ className, ...props }) {
     </div>
   )
 }
-
 
 function CustomLocationForm({onSubmit}) {
 
