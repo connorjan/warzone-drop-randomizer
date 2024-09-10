@@ -1,6 +1,10 @@
 import { useState, Fragment } from 'react'
 
+import React from 'react'
 import { cn } from "@/lib/utils"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -9,9 +13,11 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Settings as SettingsIcon } from "lucide-react"
+import { Settings as SettingsIcon, X, Plus } from "lucide-react"
 import { Settings, SwitchLabels } from "@/components/settings"
 import { MapData } from './map-data'
 
@@ -89,6 +95,16 @@ function FormSwitch({label, value, onChange}) {
   )
 }
 
+function CustomLocationRow({label, onRemove}) {
+  return (
+    <div className="flex items-center gap-4">
+      <Label className="min-w-40">{label}</Label>
+      <div className="grow"/>
+      <Button variant="ghost" className="p-0 h-6 w-12" onClick={onRemove}><X size={20} /></Button>
+    </div>
+  )
+}
+
 function ResetButton(props) {
 
   return (
@@ -118,6 +134,10 @@ function SettingsForm({ className, ...props }) {
 
   const [pending, setPending] = useState(false)
 
+  // Create a ref for each map
+  const scrollableEndRefs = MapData.map(() => React.createRef())
+  const [scrollTrackerIndex, setScrollTrackerIndex] = useState(0)
+
   const [switchStates, setSwitchStates] = useState((() => {
     // Build default switch values using the keys based off of the default settings, but override values based on local storage
     let defaults = {}
@@ -143,6 +163,20 @@ function SettingsForm({ className, ...props }) {
           defaults[map.name][location] = false
         }
       })
+    })
+
+    return defaults
+  })())
+
+  const [customLocations, setCustomLocations] = useState((() => {
+    let defaults = {}
+
+    MapData.forEach((map) => {
+      if (props.options.customLocations.hasOwnProperty(map.name)) {
+        defaults[map.name] = props.options.customLocations[map.name]
+      } else {
+        defaults[map.name] = []
+      }
     })
 
     return defaults
@@ -191,11 +225,39 @@ function SettingsForm({ className, ...props }) {
           delete newOptions.disabledLocations[map]
         }
       })
+
+      // Extract customLocations
+      Object.entries(customLocations).forEach(([map, locations]) => {
+        newOptions.customLocations[map] = locations
+        if (locations.length == 0) {
+          delete newOptions.customLocations[map]
+        }
+      })
     }
 
     props.onSubmit(newOptions)
     props.setSettingsOpen(false)
   }
+
+  const customLocationSubmit = (mapName, {location}) => {
+    let newCustomLocations = structuredClone(customLocations)
+    if (!newCustomLocations.hasOwnProperty(mapName)) {
+      newCustomLocations[mapName] = []
+    }
+    if (!newCustomLocations[mapName].includes(location)) {
+      newCustomLocations[mapName].push(location)
+    }
+    setCustomLocations(newCustomLocations)
+  }
+
+  React.useEffect(() => {
+    scrollableEndRefs[scrollTrackerIndex].current?.scrollIntoView({ behavior: 'smooth' })
+    // const div = scrollableEndRefs[scrollTrackerIndex].current
+    // if (!div) {
+    //   return
+    // }
+    // div.scrollTop = div.scrollHeight
+  }, [customLocations])
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -222,11 +284,13 @@ function SettingsForm({ className, ...props }) {
           <Fragment key={`accordian-item-${mapIndex}`}>
             <AccordionItem value={mapIndex+1}>
               <AccordionTrigger>{map.name}</AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className='px-1'>
                 <Card>
                   <ScrollArea className="max-h-40 overflow-y-auto" scrollHideDelay="0">
                     <CardContent className="p-2">
                       <div className="space-y-2">
+
+                        {/* Default locations */}
                         {Object.entries(enabledLocations[map.name]).map(([location, disabled], locationIndex) => (
                           <Fragment key={`dis-switch-${mapIndex}-${locationIndex}`}>
                             <FormSwitch label={location} value={disabled} onChange={(value) => {
@@ -238,10 +302,28 @@ function SettingsForm({ className, ...props }) {
                             {/* {locationIndex < Object.keys(enabledLocations[map.name]).length-1 && <Separator/>} */}
                           </Fragment>
                         ))}
+
+                        {/* Custom locations */}
+                        {customLocations[map.name].map((location) => (
+                          <Fragment key={`custom-loc-${mapIndex}-${location}`}>
+                            <CustomLocationRow label={location} onRemove={() => {
+                              let newCustomLocations = structuredClone(customLocations)
+                              newCustomLocations[map.name] = newCustomLocations[map.name].filter(item => item != location)
+                              setCustomLocations(newCustomLocations)
+                            }} />
+                          </Fragment>
+                        ))}
+                        <div className='!m-0' ref={scrollableEndRefs[mapIndex]} />
                       </div>
                     </CardContent>
                   </ScrollArea>
                 </Card>
+
+                <CustomLocationForm onSubmit={(formData) => {
+                  customLocationSubmit(map.name, formData)
+                  setScrollTrackerIndex(mapIndex)
+                }}/>
+
               </AccordionContent>
             </AccordionItem>
           </Fragment>
@@ -257,5 +339,47 @@ function SettingsForm({ className, ...props }) {
         <ResetButton onReset={() => onSubmitWrapper(true)} open={props.resetOpen} onOpenChange={props.setResetOpen} />
       </div>
     </div>
+  )
+}
+
+
+function CustomLocationForm({onSubmit}) {
+
+  const formSchema = z.object({
+    location: z.string()
+      .min(1, {message: ""})
+      .max(30, {message: "Custom locations cannot exceed 30 characters"}),
+  })
+
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      location: "",
+    },
+  })
+
+  const onSubmitInternal = (formData) => {
+    onSubmit(formData)
+    form.reset()
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmitInternal)} className="flex flex-row pt-1 gap-1">
+        <FormField
+          control={form.control}
+          name="location"
+          render={({ field }) => (
+            <FormItem className="grow">
+              <FormControl>
+                <Input placeholder="Custom location" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" variant="outline" className="text-lg font-bold p-0 w-10"><Plus size={24}/></Button>
+      </form>
+    </Form>
   )
 }

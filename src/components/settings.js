@@ -5,7 +5,8 @@ export const Settings = {
     showAnimation: true,
   },
 
-  disabledLocations: {}
+  disabledLocations: {},
+  customLocations: {}
 }
 
 export const SwitchLabels = {

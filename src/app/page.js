@@ -25,6 +25,10 @@ export default function App() {
     if (!settings.hasOwnProperty('disabledLocations')) {
       settings.disabledLocations = {}
     }
+    if (!settings.hasOwnProperty('customLocations')) {
+      settings.customLocations = {}
+    }
+
     return settings
   }
 
@@ -44,7 +48,7 @@ export default function App() {
   const [tab, setTab] = useState(mapData[0].name)
 
   const onTabChange = (value) => {
-    setTab(value);
+    setTab(value)
   }
 
   async function onSubmitOptions(newOptions) {
@@ -52,7 +56,7 @@ export default function App() {
   }
 
   const handleSpecialMode = () => {
-    let locations = mapData.filter((items) => (items.name == tab))[0].locations
+    let locations = structuredClone(mapData.filter((items) => (items.name == tab))[0].locations)
 
     try {
       if (options.switches.hasOwnProperty('johnMode') && options.switches.johnMode) {
@@ -69,8 +73,14 @@ export default function App() {
 
       // If not doing a special mode, filter maps based on disabledLocations
       if (options.disabledLocations.hasOwnProperty(tab)) {
-        locations = locations.filter((location) => (!options.disabledLocations[tab].includes(location)))
+        locations = locations.filter(location => !options.disabledLocations[tab].includes(location))
       }
+
+      // Add any custom locations
+      if (options.customLocations.hasOwnProperty(tab)) {
+        locations.push(...options.customLocations[tab])
+      }
+
     } catch (error) {
       console.log("Error:")
       console.log(error)
@@ -126,14 +136,19 @@ export default function App() {
               <CardContent>
                 <div className="flex flex-col items-center">
                   <div className="flex flex-col items-center w-full md:max-w-lg">
-                    <IosPickerItem
-                      items_i={itemsModified}
-                      activeIndex={activeIndices[index]}
-                      setActiveIndex={setActiveIndex(index)}
-                      duration={40}
-                      delay={10}
-                      options={options}
-                    />
+                    {itemsModified.length > 0 &&
+                      <IosPickerItem
+                        items_i={itemsModified}
+                        activeIndex={activeIndices[index]}
+                        setActiveIndex={setActiveIndex(index)}
+                        duration={40}
+                        delay={10}
+                        options={options}
+                      />
+                    }
+                    {itemsModified.length == 0 &&
+                      <div className="pt-6 text-xl text-center">Enable or add some locations in Settings!</div>
+                    }
                   </div>
                 </div>
               </CardContent>
