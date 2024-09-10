@@ -9,8 +9,6 @@ const CIRCLE_DEGREES = 360
 
 export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50, delay=20, options}) => {
 
-  const loop = true;
-
   const [emblaRef, emblaApi] = useEmblaCarousel(
     {
       loop: true,
@@ -18,7 +16,7 @@ export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50
       dragFree: true,
       containScroll: true,
       duration: duration,
-      watchDrag: false,
+      watchDrag: true,
       startIndex: activeIndex || 0
    },
    [
@@ -29,7 +27,18 @@ export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50
    ]
   )
 
-  const [items, setItems] = React.useState(items_i)
+  // Duplicate the items until there are at least 10 items in the picker
+  const items = (() => {
+    if (items_i.length == 0) {
+      return ['']
+    }
+
+    let copy = [...items_i]
+    while (copy.length < 10) {
+      copy = [...copy, ...copy]
+    }
+    return copy
+  })()
 
   const WHEEL_ITEMS_IN_VIEW = 5
   const WHEEL_ITEM_SIZE = 35
@@ -37,21 +46,10 @@ export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50
   const IN_VIEW_DEGREES = WHEEL_ITEM_RADIUS * WHEEL_ITEMS_IN_VIEW
   const WHEEL_RADIUS = Math.round(WHEEL_ITEM_SIZE / 2 / Math.tan(Math.PI / 16))
 
-  useEffect(() => {
-    let copy = [...items_i]
-    if (copy.length == 0) {
-      copy = [":)"]
-    }
-    while (copy.length < 10) {
-      copy = [...copy, ...items_i]
-    }
-    setItems(copy)
-  }, [items_i, emblaApi])
-
   const slideCount = items.length;
   const rootNodeRef = useRef(null)
   const totalRadius = slideCount * WHEEL_ITEM_RADIUS
-  const rotationOffset = loop ? 0 : WHEEL_ITEM_RADIUS
+  const rotationOffset = 0
 
   const [isPlaying, setIsPlaying] = useState(false)
 
@@ -73,7 +71,7 @@ export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50
         return Math.abs(wheelLocation - slidePosition) < IN_VIEW_DEGREES
       }
 
-      const setSlideStyles = (emblaApi, index, loop, slideCount, totalRadius) => {
+      const setSlideStyles = (emblaApi, index, slideCount, totalRadius) => {
         const slideNode = emblaApi.slideNodes()[index]
         const wheelLocation = emblaApi.scrollProgress() * totalRadius
         const positionDefault = emblaApi.scrollSnapList()[index] * totalRadius
@@ -87,12 +85,12 @@ export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50
           inView = true
         }
 
-        if (loop && isInView(wheelLocation, positionLoopEnd)) {
+        if (isInView(wheelLocation, positionLoopEnd)) {
           inView = true
           angle = -CIRCLE_DEGREES + (slideCount - index) * WHEEL_ITEM_RADIUS
         }
 
-        if (loop && isInView(wheelLocation, positionLoopStart)) {
+        if (isInView(wheelLocation, positionLoopStart)) {
           inView = true
           angle = -(totalRadius % CIRCLE_DEGREES) - index * WHEEL_ITEM_RADIUS
         }
@@ -116,10 +114,10 @@ export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50
       const wheelRotation = rotation * emblaApi.scrollProgress()
       setContainerStyles(emblaApi, wheelRotation)
       emblaApi.slideNodes().forEach((_, index) => {
-        setSlideStyles(emblaApi, index, loop, slideCount, totalRadius)
+        setSlideStyles(emblaApi, index, slideCount, totalRadius)
       })
     },
-    [loop, IN_VIEW_DEGREES, WHEEL_RADIUS, slideCount, totalRadius, rotationOffset]
+    [IN_VIEW_DEGREES, WHEEL_RADIUS, slideCount, totalRadius, rotationOffset]
   )
 
   useEffect(() => {
