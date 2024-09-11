@@ -16,7 +16,7 @@ export const IosPickerItem = ({items_i, activeIndex, setActiveIndex, duration=50
       dragFree: true,
       containScroll: true,
       duration: duration,
-      watchDrag: true,
+      watchDrag: false,
       startIndex: activeIndex || 0
    },
    [
