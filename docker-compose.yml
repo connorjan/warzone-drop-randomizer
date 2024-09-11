@@ -5,4 +5,4 @@ services:
     container_name: wz-drop-randomizer
     restart: unless-stopped
     ports: # host:container
-      - 3001:3000
+      - ${PORT}:3000

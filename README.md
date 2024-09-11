@@ -27,3 +27,10 @@ Or for daemon mode:
 ```bash
 docker compose up -d
 ```
+
+### Using the development docker-compose file
+
+```bash
+docker compose -f docker-compose.dev.yml build
+docker compose -f docker-compose.dev.yml up
+```
