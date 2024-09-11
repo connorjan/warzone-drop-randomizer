@@ -369,7 +369,7 @@ function CustomLocationForm({onSubmit}) {
           render={({ field }) => (
             <FormItem className="grow">
               <FormControl>
-                <Input placeholder="Custom location" {...field} />
+                <Input className='text-base' placeholder="Custom location" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
