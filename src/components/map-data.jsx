@@ -2,6 +2,22 @@
 
 export const MapData = [
   {
+    name: "Area 99",
+    locations: [
+      "Reactor",
+      "Bunker",
+      "Test Site",
+      "Cooling Towers",
+      "Mannequin Assembly",
+      "Nuketown Shipping",
+      "Loading Bay",
+      "Manufacturing",
+      "Warehouse",
+      "Pods",
+    ]
+  },
+
+  {
     name: "Rebirth Island",
     locations: [
       "Boat",
